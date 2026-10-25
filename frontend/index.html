@@ -556,8 +556,7 @@
                         <div class="panel-title">System</div>
                     </div>
                     <div class="event-box">
-                        <p style="margin-bottom:10px"><strong>API:</strong> <span id="apiUrl">127.0.0.1:8001</span></p>
-                        <p style="margin-bottom:10px"><strong>WebSocket:</strong> /ws</p>
+<p style="margin-bottom:10px"><strong>API:</strong> <span id="apiUrl">Connecting...</span></p>                        <p style="margin-bottom:10px"><strong>WebSocket:</strong> /ws</p>
                         <p style="margin-bottom:10px"><strong>Database:</strong> PostgreSQL</p>
                         <p style="margin-bottom:10px"><strong>Model:</strong> Random Forest</p>
                         <p><strong>Window:</strong> 10 events</p>
@@ -638,8 +637,15 @@
    CONFIGURATION
 ========================================================= */
 
-const API_BASE = "http://127.0.0.1:8001";
-const WS_URL = "ws://127.0.0.1:8001/ws";
+allow_origins=[
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "https://hdfs-log-anomaly-detection-2.onrender.com",
+]
+
+const WS_URL =
+    API_BASE.replace(/^https:/, "wss:").replace(/^http:/, "ws:") + "/ws";
+    
 
 let socket = null;
 let reconnectTimer = null;
