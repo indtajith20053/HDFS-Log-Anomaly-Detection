@@ -904,6 +904,16 @@ function formatProbability(value) {
    START / STOP DETECTOR
 ========================================================= */
 
+const API_BASE =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+        ? "http://127.0.0.1:8001"
+        : "https://hdfs-log-anomaly-detection-1.onrender.com";
+
+const WS_URL =
+    API_BASE.replace(/^https:/, "wss:")
+            .replace(/^http:/, "ws:") + "/ws";
+            
 async function startDetector() {
     const button = element("startButton");
     button.disabled = true;
