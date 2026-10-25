@@ -641,20 +641,11 @@ const API_BASE =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
         ? "http://127.0.0.1:8001"
-        : "https://hdfs-log-anomaly-detection-2.onrender.com";
-        
+        : "https://hdfs-log-anomaly-detection-1.onrender.com";
 
 const WS_URL =
     API_BASE.replace(/^https:/, "wss:")
             .replace(/^http:/, "ws:") + "/ws";
-            
-
-let socket = null;
-let reconnectTimer = null;
-
-const HISTORY_PAGE_SIZE = 50;
-let historyOffset = 0;
-let historyRequestInProgress = false;
 
 
 /* =========================================================
