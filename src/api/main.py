@@ -1,12 +1,27 @@
+
+import asyncio
+import os
+from contextlib import asynccontextmanager
+
+import psycopg
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from src.api.live_detector import detector
 from src.features.parser import event_sequence_to_features
 from src.models.predict import predict
-from src.api.live_detector import detector
-import os
-import psycopg
+
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+FRONTEND_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "https://hdfs-log-anomaly-detection-2.onrender.com",
+]
 
 
 # ============================================================
@@ -15,27 +30,18 @@ import psycopg
 
 app = FastAPI(
     title="HDFS Log Anomaly Detection API",
-    version="1.0.0"
+    version="1.1.0",
 )
 
 
-# ============================================================
-# CORS
-# ============================================================
-
-from fastapi.middleware.cors import CORSMiddleware
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-        "https://hdfs-log-anomaly-detection-2.onrender.com",
-    ],
+    allow_origins=FRONTEND_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ============================================================
 # REQUEST MODEL
@@ -53,19 +59,23 @@ class PredictionRequest(BaseModel):
 def home():
     return {
         "status": "online",
-        "service": "HDFS Log Anomaly Detection API"
+        "service": "HDFS Log Anomaly Detection API",
+        "version": app.version,
     }
 
 
 # ============================================================
-# HEALTH
+# HEALTH CHECK
 # ============================================================
 
 @app.get("/health")
 def health():
     return {
         "status": "healthy",
-        "detector_running": detector.running
+        "detector_running": detector.running,
+        "database_configured": bool(
+            os.getenv("DATABASE_URL", "").strip()
+        ),
     }
 
 
@@ -75,40 +85,31 @@ def health():
 
 @app.post("/predict")
 def make_prediction(request: PredictionRequest):
-
     try:
-
         features = event_sequence_to_features(
             request.event_sequence
         )
 
         result = predict(features)
 
-        prediction = int(
-            result.iloc[0]["prediction"]
-        )
-
+        prediction = int(result.iloc[0]["prediction"])
         probability = float(
             result.iloc[0]["anomaly_probability"]
         )
 
         return {
             "prediction": (
-                "Anomaly"
-                if prediction == 1
-                else "Normal"
+                "Anomaly" if prediction == 1 else "Normal"
             ),
-            "anomaly_probability": probability
+            "anomaly_probability": probability,
         }
 
-    except Exception as e:
-
+    except Exception as exc:
+        print("PREDICTION ERROR:", repr(exc))
         raise HTTPException(
             status_code=400,
-            detail=str(e)
-        )
-
-
+            detail="Prediction failed. Check the backend logs.",
+        ) from exc
 
 
 # ============================================================
@@ -117,27 +118,40 @@ def make_prediction(request: PredictionRequest):
 
 @app.get("/events")
 def get_events(limit: int = 50, offset: int = 0):
-    """Return saved HDFS predictions, newest first."""
+    """Return saved predictions, newest first."""
+
     if not 1 <= limit <= 500 or offset < 0:
         raise HTTPException(
             status_code=400,
-            detail="limit must be 1-500 and offset must be non-negative",
+            detail=(
+                "limit must be between 1 and 500, "
+                "and offset must be non-negative"
+            ),
         )
 
-    database_url = os.getenv("DATABASE_URL")
+    database_url = os.getenv("DATABASE_URL", "").strip()
+
     if not database_url:
         raise HTTPException(
             status_code=503,
-            detail="DATABASE_URL is not configured",
+            detail="DATABASE_URL is not configured on the backend",
         )
 
     try:
-        with psycopg.connect(database_url, connect_timeout=5) as conn:
+        with psycopg.connect(
+            database_url,
+            connect_timeout=10,
+        ) as conn:
             rows = conn.execute(
                 """
-                SELECT id, event_timestamp, prediction_label,
-                       anomaly_probability, event_sequence,
-                       window_events, created_at
+                SELECT
+                    id,
+                    event_timestamp,
+                    prediction_label,
+                    anomaly_probability,
+                    event_sequence,
+                    window_events,
+                    created_at
                 FROM event_history
                 ORDER BY id DESC
                 LIMIT %s OFFSET %s
@@ -145,102 +159,136 @@ def get_events(limit: int = 50, offset: int = 0):
                 (limit, offset),
             ).fetchall()
 
-        return {
-            "count": len(rows),
-            "limit": limit,
-            "offset": offset,
-            "events": [
+        events = []
+
+        for row in rows:
+            events.append(
                 {
                     "id": row[0],
                     "event_timestamp": (
-                        row[1].isoformat() if row[1] else None
+                        row[1].isoformat()
+                        if row[1] else None
                     ),
                     "prediction": row[2],
-                    "anomaly_probability": row[3],
+                    "anomaly_probability": (
+                        float(row[3])
+                        if row[3] is not None else None
+                    ),
                     "event_sequence": row[4],
                     "window": row[5],
                     "created_at": (
-                        row[6].isoformat() if row[6] else None
+                        row[6].isoformat()
+                        if row[6] else None
                     ),
                 }
-                for row in rows
-            ],
+            )
+
+        return {
+            "count": len(events),
+            "limit": limit,
+            "offset": offset,
+            "events": events,
         }
 
+    except HTTPException:
+        raise
+
     except Exception as exc:
-        print("DATABASE HISTORY ERROR:", exc)
+        # Do not print DATABASE_URL or database credentials.
+        print(
+            "DATABASE HISTORY ERROR:",
+            type(exc).__name__,
+            str(exc),
+        )
+
         raise HTTPException(
             status_code=503,
-            detail="Could not retrieve detection history",
+            detail=(
+                "Could not retrieve detection history. "
+                "Check backend logs and database configuration."
+            ),
         ) from exc
 
 
 # ============================================================
-# LIVE LATEST RESULT
+# LATEST DETECTION RESULT
 # ============================================================
 
 @app.get("/live/latest")
 def live_latest():
-
     return detector.latest_result
 
 
 # ============================================================
-# START LIVE DETECTOR
+# START DETECTOR
 # ============================================================
 
 @app.post("/live/start")
 def start_live_detector():
+    try:
+        detector.start()
 
-    detector.start()
+        return {
+            "status": "started",
+            "detector_running": detector.running,
+        }
 
-    return {
-        "status": "started",
-        "detector_running": detector.running
-    }
+    except Exception as exc:
+        print("DETECTOR START ERROR:", repr(exc))
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not start the detector. Check backend logs.",
+        ) from exc
 
 
 # ============================================================
-# STOP LIVE DETECTOR
+# STOP DETECTOR
 # ============================================================
 
 @app.post("/live/stop")
 def stop_live_detector():
+    try:
+        detector.stop()
 
-    detector.stop()
+        return {
+            "status": "stopped",
+            "detector_running": detector.running,
+        }
 
-    return {
-        "status": "stopped",
-        "detector_running": detector.running
-    }
+    except Exception as exc:
+        print("DETECTOR STOP ERROR:", repr(exc))
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not stop the detector. Check backend logs.",
+        ) from exc
 
 
 # ============================================================
-# WEBSOCKET
+# WEBSOCKET LIVE STREAM
 # ============================================================
 
 @app.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket
-):
-
+async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
+    print("WebSocket client connected")
+
     try:
-
         while True:
-
-            await websocket.send_json(
-                detector.latest_result
-            )
-
-            import asyncio
+            # Send the latest available detector result.
+            await websocket.send_json(detector.latest_result)
 
             await asyncio.sleep(0.5)
 
     except WebSocketDisconnect:
+        print("WebSocket client disconnected")
 
-        print(
-            "WebSocket client disconnected"
-        )
-        
+    except Exception as exc:
+        print("WEBSOCKET ERROR:", type(exc).__name__, str(exc))
+
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
