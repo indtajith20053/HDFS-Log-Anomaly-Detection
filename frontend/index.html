@@ -1,0 +1,1162 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HDFS Sentinel — Log Anomaly Detection</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Inter, Arial, sans-serif;
+            background: #0b0f19;
+            color: #f5f7fb;
+            min-height: 100vh;
+        }
+
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: #111625;
+            border-right: 1px solid #252b3b;
+            padding: 24px 16px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 40px;
+        }
+
+        .logo span {
+            color: #6ea8fe;
+        }
+
+        .nav-title {
+            font-size: 11px;
+            color: #727b91;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 20px 10px 10px;
+        }
+
+        .nav-item {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            color: #aeb7ca;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            background: #1b2438;
+            color: #fff;
+        }
+
+        .main {
+            margin-left: 240px;
+            width: calc(100% - 240px);
+            padding: 28px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 750;
+        }
+
+        .subtitle {
+            color: #7f899f;
+            margin-top: 6px;
+        }
+
+        .connection {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #141a2a;
+            border: 1px solid #293247;
+            padding: 9px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #ef4444;
+            flex-shrink: 0;
+        }
+
+        .dot.online {
+            background: #22c55e;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #111625;
+            border: 1px solid #252d40;
+            border-radius: 16px;
+            padding: 20px;
+            min-width: 0;
+        }
+
+        .card-label {
+            color: #818ba1;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .card-value {
+            font-size: 28px;
+            font-weight: 750;
+            overflow-wrap: anywhere;
+        }
+
+        .normal-text {
+            color: #22c55e;
+        }
+
+        .anomaly-text {
+            color: #ef4444;
+        }
+
+        .waiting-text {
+            color: #f59e0b;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+            gap: 20px;
+        }
+
+        .panel {
+            background: #111625;
+            border: 1px solid #252d40;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-width: 0;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .detection {
+            min-height: 230px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .status-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 4px solid #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 18px;
+        }
+
+        .status-circle.normal {
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+
+        .status-circle.anomaly {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .status-circle.waiting {
+            border-color: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .probability {
+            color: #8b95aa;
+            font-size: 14px;
+        }
+
+        .event-box {
+            background: #0c111e;
+            border: 1px solid #252d40;
+            border-radius: 10px;
+            padding: 16px;
+            overflow-wrap: anywhere;
+        }
+
+        .event-id {
+            font-size: 30px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .timestamp {
+            color: #707a90;
+            font-size: 13px;
+        }
+
+        .window {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .event-chip {
+            background: #1b2438;
+            border: 1px solid #303b55;
+            padding: 7px 10px;
+            border-radius: 7px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .logs {
+            height: 300px;
+            overflow-y: auto;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .log {
+            padding: 9px 0;
+            border-bottom: 1px solid #1b2232;
+            color: #9ba5ba;
+            overflow-wrap: anywhere;
+        }
+
+        .log.normal {
+            color: #55d98b;
+        }
+
+        .log.anomaly {
+            color: #ff6b6b;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            padding: 9px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            background: #263149;
+            color: white;
+        }
+
+        button:hover {
+            background: #33415f;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        button.start {
+            background: #166534;
+        }
+
+        button.stop {
+            background: #991b1b;
+        }
+
+        .history-summary {
+            color: #9ba5ba;
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid #252d40;
+            border-radius: 10px;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .history-table th {
+            color: #aeb7ca;
+            background: #171e30;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 12px;
+            border-bottom: 1px solid #252d40;
+            vertical-align: top;
+        }
+
+        .history-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .history-table tbody tr:hover {
+            background: #171e30;
+        }
+
+        .sequence-cell {
+            min-width: 240px;
+            max-width: 440px;
+            overflow-wrap: anywhere;
+            font-family: Consolas, monospace;
+            color: #aeb7ca;
+            line-height: 1.7;
+        }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .prediction-badge.normal {
+            color: #4ade80;
+            background: #123222;
+        }
+
+        .prediction-badge.anomaly {
+            color: #f87171;
+            background: #3a171d;
+        }
+
+        .empty-cell {
+            color: #8b95aa;
+            text-align: center;
+            padding: 24px !important;
+        }
+
+        .history-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .history-page {
+            color: #9ba5ba;
+            font-size: 13px;
+        }
+
+        @media (max-width: 1100px) {
+            .cards {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                width: 100%;
+                padding: 18px;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .page-title {
+                font-size: 24px;
+            }
+
+            .panel {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="app">
+
+    <aside class="sidebar">
+        <div class="logo">HDFS <span>Sentinel</span></div>
+
+        <div class="nav-title">Monitoring</div>
+        <div class="nav-item active">📊 Dashboard</div>
+        <div class="nav-item" onclick="scrollToHistory()">🔴 Anomalies / History</div>
+        <div class="nav-item" onclick="scrollToHistory()">📜 Logs</div>
+
+        <div class="nav-title">System</div>
+        <div class="nav-item" onclick="checkAPI()">⚙️ Check API</div>
+    </aside>
+
+    <main class="main">
+
+        <div class="topbar">
+            <div>
+                <div class="page-title">HDFS Log Monitoring</div>
+                <div class="subtitle">
+                    Machine-learning log anomaly detection and stored event history
+                </div>
+            </div>
+
+            <div class="connection">
+                <div id="connectionDot" class="dot"></div>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </div>
+
+        <section class="cards">
+            <div class="card">
+                <div class="card-label">API Status</div>
+                <div id="apiStatus" class="card-value waiting-text">Checking...</div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">Detector</div>
+                <div id="detectorStatus" class="card-value waiting-text">Checking...</div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">Latest Event</div>
+                <div id="latestEvent" class="card-value">—</div>
+            </div>
+
+            <div class="card">
+                <div class="card-label">Prediction</div>
+                <div id="prediction" class="card-value waiting-text">Waiting</div>
+            </div>
+        </section>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Live Detector</div>
+                <div class="controls">
+                    <button id="startButton" class="start" onclick="startDetector()">▶ Start</button>
+                    <button id="stopButton" class="stop" onclick="stopDetector()">■ Stop</button>
+                </div>
+            </div>
+            <div class="timestamp">
+                Start or stop the detector that reads the configured HDFS log source.
+            </div>
+        </div>
+
+        <div class="grid">
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Latest Detection</div>
+                        <div id="detectionTime" class="timestamp">—</div>
+                    </div>
+
+                    <div class="detection">
+                        <div id="statusCircle" class="status-circle waiting">WAITING</div>
+                        <div id="probability" class="probability">Waiting for event window...</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Current Event Window</div>
+                        <div id="windowCount" class="timestamp">0 / 10</div>
+                    </div>
+                    <div id="eventWindow" class="window"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Live Activity</div>
+                        <button onclick="clearLogs()">Clear</button>
+                    </div>
+                    <div id="logs" class="logs"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Current Event</div>
+                    </div>
+                    <div class="event-box">
+                        <div id="currentEvent" class="event-id">—</div>
+                        <div id="currentTimestamp" class="timestamp">Waiting for HDFS logs...</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">System</div>
+                    </div>
+                    <div class="event-box">
+                        <p style="margin-bottom:10px"><strong>API:</strong> <span id="apiUrl">127.0.0.1:8001</span></p>
+                        <p style="margin-bottom:10px"><strong>WebSocket:</strong> /ws</p>
+                        <p style="margin-bottom:10px"><strong>Database:</strong> PostgreSQL</p>
+                        <p style="margin-bottom:10px"><strong>Model:</strong> Random Forest</p>
+                        <p><strong>Window:</strong> 10 events</p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Detection Legend</div>
+                    </div>
+                    <div class="event-box">
+                        <p style="color:#22c55e;margin-bottom:12px">🟢 Normal</p>
+                        <p style="color:#ef4444;margin-bottom:12px">🔴 Anomaly</p>
+                        <p style="color:#f59e0b">🟡 Collecting events</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- POSTGRESQL DETECTION HISTORY -->
+        <section class="panel" id="detectionHistory">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">🗄️ PostgreSQL Detection History</div>
+                    <div class="timestamp" style="margin-top:6px">
+                        Saved predictions, newest first
+                    </div>
+                </div>
+                <button id="refreshHistoryButton" onclick="loadDetectionHistory()">
+                    ↻ Refresh
+                </button>
+            </div>
+
+            <div class="history-summary">
+                Records displayed: <strong id="historyCount">0</strong>
+                <span id="historyStatus" style="margin-left:8px">Loading history...</span>
+            </div>
+
+            <div class="table-wrap">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Prediction</th>
+                            <th>Anomaly Probability</th>
+                            <th>Event Sequence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyRows">
+                        <tr>
+                            <td colspan="5" class="empty-cell">Loading saved detections...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="history-footer">
+                <div id="historyPage" class="history-page">Page 1</div>
+                <div class="controls">
+                    <button id="previousHistoryButton" onclick="previousHistoryPage()" disabled>
+                        ← Previous
+                    </button>
+                    <button id="nextHistoryButton" onclick="nextHistoryPage()" disabled>
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   CONFIGURATION
+========================================================= */
+
+const API_BASE = "http://127.0.0.1:8001";
+const WS_URL = "ws://127.0.0.1:8001/ws";
+
+let socket = null;
+let reconnectTimer = null;
+
+const HISTORY_PAGE_SIZE = 50;
+let historyOffset = 0;
+let historyRequestInProgress = false;
+
+
+/* =========================================================
+   DOM HELPERS
+========================================================= */
+
+function element(id) {
+    return document.getElementById(id);
+}
+
+
+/* =========================================================
+   LIVE ACTIVITY LOGGING
+========================================================= */
+
+function addLog(message, type = "") {
+    const logs = element("logs");
+    const item = document.createElement("div");
+
+    item.className = "log " + type;
+    item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+
+    logs.prepend(item);
+
+    while (logs.children.length > 100) {
+        logs.removeChild(logs.lastChild);
+    }
+}
+
+function clearLogs() {
+    element("logs").replaceChildren();
+}
+
+function scrollToHistory() {
+    element("detectionHistory").scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+}
+
+
+/* =========================================================
+   API HEALTH
+========================================================= */
+
+async function checkAPI() {
+    try {
+        const response = await fetch(`${API_BASE}/health`, {
+            method: "GET",
+            cache: "no-cache"
+        });
+
+        if (!response.ok) {
+            throw new Error(`API returned HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        element("apiStatus").textContent = "Online";
+        element("apiStatus").className = "card-value normal-text";
+
+        const running = Boolean(data.detector_running);
+
+        element("detectorStatus").textContent = running ? "Running" : "Stopped";
+        element("detectorStatus").className =
+            "card-value " + (running ? "normal-text" : "waiting-text");
+
+        addLog("FastAPI connection established.", "normal");
+        return true;
+
+    } catch (error) {
+        console.error("API health error:", error);
+
+        element("apiStatus").textContent = "Offline";
+        element("apiStatus").className = "card-value anomaly-text";
+
+        element("detectorStatus").textContent = "Unknown";
+        element("detectorStatus").className = "card-value anomaly-text";
+
+        addLog("Cannot connect to FastAPI: " + error.message, "anomaly");
+        return false;
+    }
+}
+
+
+/* =========================================================
+   WEBSOCKET CONNECTION
+========================================================= */
+
+function connectWebSocket() {
+    if (
+        socket &&
+        (socket.readyState === WebSocket.OPEN ||
+         socket.readyState === WebSocket.CONNECTING)
+    ) {
+        return;
+    }
+
+    console.log("Connecting to HDFS WebSocket...");
+
+    try {
+        socket = new WebSocket(WS_URL);
+    } catch (error) {
+        console.error("WebSocket creation failed:", error);
+        scheduleReconnect();
+        return;
+    }
+
+    socket.onopen = function () {
+        element("connectionDot").classList.add("online");
+        element("connectionText").textContent = "Live Connected";
+        addLog("WebSocket connected.", "normal");
+    };
+
+    socket.onmessage = function (event) {
+        try {
+            const data = JSON.parse(event.data);
+            updateDashboard(data);
+
+            // Refresh history when a prediction has been saved.
+            if (data.status === "detected" ||
+                data.prediction === "Anomaly" ||
+                data.prediction === "Normal") {
+                loadDetectionHistory();
+            }
+        } catch (error) {
+            console.error("WebSocket message error:", error);
+            addLog("Could not process a WebSocket message.", "anomaly");
+        }
+    };
+
+    socket.onerror = function (error) {
+        console.error("WebSocket error:", error);
+        element("connectionDot").classList.remove("online");
+        element("connectionText").textContent = "Connection Error";
+    };
+
+    socket.onclose = function () {
+        element("connectionDot").classList.remove("online");
+        element("connectionText").textContent = "Reconnecting...";
+        socket = null;
+        scheduleReconnect();
+    };
+}
+
+function scheduleReconnect() {
+    if (reconnectTimer !== null) {
+        return;
+    }
+
+    reconnectTimer = setTimeout(function () {
+        reconnectTimer = null;
+        connectWebSocket();
+    }, 3000);
+}
+
+
+/* =========================================================
+   LIVE DASHBOARD UPDATES
+========================================================= */
+
+function updateDashboard(data) {
+    console.log("Detection update:", data);
+
+    if (data.event) {
+        element("latestEvent").textContent = data.event;
+        element("currentEvent").textContent = data.event;
+    }
+
+    if (data.timestamp) {
+        element("detectionTime").textContent = data.timestamp;
+        element("currentTimestamp").textContent = data.timestamp;
+    }
+
+    if (Array.isArray(data.window)) {
+        const windowElement = element("eventWindow");
+        windowElement.replaceChildren();
+
+        data.window.forEach(function (eventId) {
+            const chip = document.createElement("div");
+            chip.className = "event-chip";
+            chip.textContent = eventId;
+            windowElement.appendChild(chip);
+        });
+
+        element("windowCount").textContent = `${data.window.length} / 10`;
+    }
+
+    if (data.status === "collecting") {
+        element("prediction").textContent = "Collecting";
+        element("prediction").className = "card-value waiting-text";
+
+        element("statusCircle").textContent = "WAITING";
+        element("statusCircle").className = "status-circle waiting";
+
+        element("probability").textContent = "Collecting events for ML window...";
+
+        addLog(
+            `Event ${data.event || "received"} — ${(data.window || []).length}/10`,
+            ""
+        );
+        return;
+    }
+
+    if (data.prediction === "Anomaly") {
+        element("prediction").textContent = "ANOMALY";
+        element("prediction").className = "card-value anomaly-text";
+
+        element("statusCircle").textContent = "ANOMALY";
+        element("statusCircle").className = "status-circle anomaly";
+
+        element("probability").textContent =
+            `Anomaly probability: ${formatProbability(data.anomaly_probability)}`;
+
+        addLog(
+            `ANOMALY detected — probability ${formatProbability(data.anomaly_probability)}`,
+            "anomaly"
+        );
+        return;
+    }
+
+    if (data.prediction === "Normal") {
+        element("prediction").textContent = "NORMAL";
+        element("prediction").className = "card-value normal-text";
+
+        element("statusCircle").textContent = "NORMAL";
+        element("statusCircle").className = "status-circle normal";
+
+        element("probability").textContent =
+            `Anomaly probability: ${formatProbability(data.anomaly_probability)}`;
+
+        addLog(
+            `NORMAL — anomaly probability ${formatProbability(data.anomaly_probability)}`,
+            "normal"
+        );
+    }
+}
+
+function formatProbability(value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        return "N/A";
+    }
+
+    return (value * 100).toFixed(1) + "%";
+}
+
+
+/* =========================================================
+   START / STOP DETECTOR
+========================================================= */
+
+async function startDetector() {
+    const button = element("startButton");
+    button.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE}/live/start`, {
+            method: "POST"
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Detector started:", data);
+
+        element("detectorStatus").textContent = "Running";
+        element("detectorStatus").className = "card-value normal-text";
+
+        addLog("Detector start request succeeded.", "normal");
+        await checkAPI();
+
+    } catch (error) {
+        console.error("Start detector error:", error);
+        addLog("Failed to start detector: " + error.message, "anomaly");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function stopDetector() {
+    const button = element("stopButton");
+    button.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE}/live/stop`, {
+            method: "POST"
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Detector stopped:", data);
+
+        element("detectorStatus").textContent = "Stopped";
+        element("detectorStatus").className = "card-value waiting-text";
+
+        addLog("Detector stop request succeeded.", "");
+        await checkAPI();
+
+    } catch (error) {
+        console.error("Stop detector error:", error);
+        addLog("Failed to stop detector: " + error.message, "anomaly");
+    } finally {
+        button.disabled = false;
+    }
+}
+
+
+/* =========================================================
+   POSTGRESQL DETECTION HISTORY
+   Uses the existing GET /events endpoint.
+========================================================= */
+
+async function loadDetectionHistory() {
+    if (historyRequestInProgress) {
+        return;
+    }
+
+    historyRequestInProgress = true;
+
+    const rows = element("historyRows");
+    const count = element("historyCount");
+    const status = element("historyStatus");
+    const refreshButton = element("refreshHistoryButton");
+
+    refreshButton.disabled = true;
+    status.textContent = "Loading...";
+
+    try {
+        const url =
+            `${API_BASE}/events?limit=${HISTORY_PAGE_SIZE}&offset=${historyOffset}`;
+
+        const response = await fetch(url, {
+            method: "GET",
+            cache: "no-cache"
+        });
+
+        if (!response.ok) {
+            let detail = `HTTP ${response.status}`;
+
+            try {
+                const errorData = await response.json();
+                if (errorData.detail) {
+                    detail += ` — ${errorData.detail}`;
+                }
+            } catch (_) {
+                // Keep the HTTP error if the body isn't JSON.
+            }
+
+            throw new Error(detail);
+        }
+
+        const data = await response.json();
+        const events = Array.isArray(data.events) ? data.events : [];
+
+        count.textContent = String(events.length);
+        status.textContent = "Connected to API";
+
+        rows.replaceChildren();
+
+        if (events.length === 0) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+
+            td.colSpan = 5;
+            td.className = "empty-cell";
+            td.textContent = historyOffset === 0
+                ? "No saved detections yet. Start the detector to collect predictions."
+                : "No more history records on this page.";
+
+            tr.appendChild(td);
+            rows.appendChild(tr);
+        } else {
+            events.forEach(function (item) {
+                const tr = document.createElement("tr");
+
+                const idCell = document.createElement("td");
+                idCell.textContent = item.id == null ? "—" : String(item.id);
+                tr.appendChild(idCell);
+
+                const timeCell = document.createElement("td");
+                timeCell.textContent = formatTimestamp(item.event_timestamp);
+                tr.appendChild(timeCell);
+
+                const predictionCell = document.createElement("td");
+                const badge = document.createElement("span");
+                const prediction = String(item.prediction || "Unknown");
+
+                badge.className = "prediction-badge " +
+                    (prediction.toLowerCase() === "anomaly" ? "anomaly" :
+                     prediction.toLowerCase() === "normal" ? "normal" : "");
+
+                badge.textContent = prediction;
+                predictionCell.appendChild(badge);
+                tr.appendChild(predictionCell);
+
+                const probabilityCell = document.createElement("td");
+                probabilityCell.textContent =
+                    formatProbability(item.anomaly_probability);
+                tr.appendChild(probabilityCell);
+
+                const sequenceCell = document.createElement("td");
+                sequenceCell.className = "sequence-cell";
+
+                if (Array.isArray(item.window) && item.window.length > 0) {
+                    sequenceCell.textContent = item.window.join(" ");
+                } else {
+                    sequenceCell.textContent = item.event_sequence || "—";
+                }
+
+                tr.appendChild(sequenceCell);
+                rows.appendChild(tr);
+            });
+        }
+
+        const pageNumber = Math.floor(historyOffset / HISTORY_PAGE_SIZE) + 1;
+        element("historyPage").textContent = `Page ${pageNumber}`;
+
+        element("previousHistoryButton").disabled = historyOffset === 0;
+        element("nextHistoryButton").disabled =
+            events.length < HISTORY_PAGE_SIZE;
+
+    } catch (error) {
+        console.error("Detection history error:", error);
+
+        count.textContent = "0";
+        status.textContent = "Could not load history";
+
+        rows.replaceChildren();
+
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+
+        td.colSpan = 5;
+        td.className = "empty-cell";
+        td.textContent =
+            `Could not load history: ${error.message}. Check that the API and PostgreSQL are running.`;
+
+        tr.appendChild(td);
+        rows.appendChild(tr);
+
+        element("previousHistoryButton").disabled = historyOffset === 0;
+        element("nextHistoryButton").disabled = true;
+
+    } finally {
+        historyRequestInProgress = false;
+        refreshButton.disabled = false;
+    }
+}
+
+function formatTimestamp(value) {
+    if (!value) {
+        return "—";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+
+    return date.toLocaleString();
+}
+
+function previousHistoryPage() {
+    if (historyOffset === 0) {
+        return;
+    }
+
+    historyOffset = Math.max(0, historyOffset - HISTORY_PAGE_SIZE);
+    loadDetectionHistory();
+}
+
+function nextHistoryPage() {
+    if (element("nextHistoryButton").disabled) {
+        return;
+    }
+
+    historyOffset += HISTORY_PAGE_SIZE;
+    loadDetectionHistory();
+}
+
+
+/* =========================================================
+   INITIALIZATION
+========================================================= */
+
+async function initialize() {
+    console.log("Initializing HDFS Sentinel dashboard...");
+
+    await checkAPI();
+
+    connectWebSocket();
+
+    await loadDetectionHistory();
+
+    // Refresh history periodically as a fallback if a WebSocket
+    // message is missed. Avoid overly frequent database requests.
+    setInterval(function () {
+        if (!document.hidden) {
+            loadDetectionHistory();
+        }
+    }, 15000);
+}
+
+initialize();
+</script>
+</body>
+</html>

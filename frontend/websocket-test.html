@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HDFS WebSocket Test</title>
+</head>
+
+<body>
+
+<h1>HDFS Live WebSocket Test</h1>
+
+<pre id="output">Connecting...</pre>
+
+<script>
+
+const output = document.getElementById("output");
+
+const ws = new WebSocket(
+    "ws://127.0.0.1:8001/ws"
+);
+
+ws.onopen = () => {
+
+    output.textContent +=
+        "\nCONNECTED ✅";
+
+};
+
+ws.onmessage = (event) => {
+
+    const data = JSON.parse(event.data);
+
+    output.textContent =
+        JSON.stringify(data, null, 2);
+
+};
+
+ws.onerror = () => {
+
+    output.textContent +=
+        "\nWEBSOCKET ERROR ❌";
+
+};
+
+ws.onclose = () => {
+
+    output.textContent +=
+        "\nDISCONNECTED ❌";
+
+};
+
+</script>
+
+</body>
+</html>

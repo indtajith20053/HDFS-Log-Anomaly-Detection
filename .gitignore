@@ -1,0 +1,62 @@
+# Secrets and environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.venv-*/
+venv/
+
+# Model and experiment artifacts
+*.joblib
+*.pkl
+
+# Large raw datasets and logs
+data/raw/
+*.log
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+data/raw/
+!models/anomaly_model.joblib
+
+# Local backups and temporary files
+Dockerfile.backup
+Dockerfile.txt
+docker-compose.backup.yml
+api_backup.py
+telegram_test.py
+setup-telegram-env.ps1
+
+# Local dataset export (review before publishing)
+hdfs_readable.csv
+
+docker-compose.backup.yml
+src/docker-compose.yml
+src/Dockerfile
+src/.dockerignore
+
+
+docker-compose.backup.yml
+src/docker-compose.yml
+src/Dockerfile
+src/.dockerignore
+
+
+docker-compose.backup.yml
+src/docker-compose.yml
+src/Dockerfile
+src/.dockerignore
+
