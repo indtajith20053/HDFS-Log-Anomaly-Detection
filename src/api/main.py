@@ -194,11 +194,11 @@ def get_events(limit: int = 50, offset: int = 0):
         raise
 
     except Exception as exc:
-        # Do not print DATABASE_URL or database credentials.
         print(
             "DATABASE HISTORY ERROR:",
             type(exc).__name__,
             str(exc),
+            flush=True,
         )
 
         raise HTTPException(
@@ -207,38 +207,6 @@ def get_events(limit: int = 50, offset: int = 0):
                 "Could not retrieve detection history. "
                 "Check backend logs and database configuration."
             ),
-        ) from exc
-
-
-# ============================================================
-# LATEST DETECTION RESULT
-# ============================================================
-
-@app.get("/live/latest")
-def live_latest():
-    return detector.latest_result
-
-
-# ============================================================
-# START DETECTOR
-# ============================================================
-
-@app.post("/live/start")
-def start_live_detector():
-    try:
-        detector.start()
-
-        return {
-            "status": "started",
-            "detector_running": detector.running,
-        }
-
-    except Exception as exc:
-        print("DETECTOR START ERROR:", repr(exc))
-
-        raise HTTPException(
-            status_code=500,
-            detail="Could not start the detector. Check backend logs.",
         ) from exc
 
 
