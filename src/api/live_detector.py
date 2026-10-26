@@ -11,8 +11,7 @@ from src.api.database import save_detection
 from src.api.telegram_alerts import send_telegram_alert
 
 
-LOG_FILE = Path(__file__).resolve().parents[2] / "data" / "raw" / "HDFS.log"
-
+LOG_FILE = Path(__file__).resolve().parents[2] / "data" / "sample" / "HDFS_sample.log"
 WINDOW_SIZE = 10
 REPLAY_INTERVAL = 0.5
 

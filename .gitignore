@@ -17,7 +17,8 @@ venv/
 # Large raw datasets and logs
 data/raw/
 *.log
-
+!data/sample/
+!data/sample/HDFS_sample.log
 # Databases
 *.db
 *.sqlite
