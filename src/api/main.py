@@ -232,6 +232,28 @@ def stop_live_detector():
             detail="Could not stop the detector. Check backend logs.",
         ) from exc
 
+# ============================================================
+# START DETECTOR
+# ============================================================
+
+@app.post("/live/start")
+def start_live_detector():
+    try:
+        detector.start()
+
+        return {
+            "status": "started",
+            "detector_running": detector.running,
+        }
+
+    except Exception as exc:
+        print("DETECTOR START ERROR:", repr(exc), flush=True)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not start the detector. Check backend logs.",
+        ) from exc
+
 
 # ============================================================
 # WEBSOCKET LIVE STREAM
