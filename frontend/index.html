@@ -647,6 +647,12 @@ const WS_URL =
     API_BASE.replace(/^https:/, "wss:")
             .replace(/^http:/, "ws:") + "/ws";
 
+let socket = null;
+let reconnectTimer = null;
+
+const HISTORY_PAGE_SIZE = 50;
+let historyOffset = 0;
+let historyRequestInProgress = false;
 
 /* =========================================================
    DOM HELPERS
