@@ -13,8 +13,8 @@ An intelligent log anomaly detection system designed to identify unusual pattern
 ## 🎬 Project Demo
 
 <p align="center">
-  <a href="(https://hdfs-log-anomaly-detection-2.onrender.com)">
-    <img src="(https://hdfs-log-anomaly-detection-2.onrender.com)" alt="HDFS Log Anomaly Detection Demo" width="800">
+  <a href="[(https://hdfs-log-anomaly-detection-2.onrender.com)]">
+    <img src="[(https://hdfs-log-anomaly-detection-2.onrender.com)]" alt="HDFS Log Anomaly Detection Demo" width="800">
   </a>
 </p>
 
@@ -22,10 +22,7 @@ An intelligent log anomaly detection system designed to identify unusual pattern
   <a href="YOUR_LIVE_DEMO_URL">
     <img src="https://img.shields.io/badge/Live-Demo-2563EB?style=for-the-badge" alt="Live Demo">
   </a>
-  <a href="YOUR_GITHUB_REPOSITORY_URL">
-    <img src="https://img.shields.io/badge/Source-Code-181717?style=for-the-badge&logo=github" alt="Source Code">
-  </a>
-</p>
+ 
 
 > 🎥 Watch the demonstration to see the anomaly detection workflow, dashboard, and alerting integration.
 
