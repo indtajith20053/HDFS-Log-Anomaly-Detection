@@ -13,8 +13,8 @@ An intelligent log anomaly detection system designed to identify unusual pattern
 ## 🎬 Project Demo
 
 <p align="center">
-  <a href="YOUR_DEMO_VIDEO_LINK">
-    <img src="YOUR_DEMO_THUMBNAIL_URL" alt="HDFS Log Anomaly Detection Demo" width="800">
+  <a href="[YOUR_DEMO_VIDEO_LINK](https://hdfs-log-anomaly-detection-2.onrender.com)">
+    <img src="[YOUR_DEMO_THUMBNAIL_URL](https://hdfs-log-anomaly-detection-2.onrender.com)" alt="HDFS Log Anomaly Detection Demo" width="800">
   </a>
 </p>
 
