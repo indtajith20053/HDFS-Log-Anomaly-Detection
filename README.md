@@ -197,7 +197,7 @@ The notification workflow can be extended to include timestamps, event identifie
 ### 1. Clone the Repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
+git clone (https://github.com/indtajith20053/HDFS-Log-Anomaly-Detection)
 cd HDFS-Log-Anomaly-Detection
 ```
 
