@@ -165,7 +165,7 @@ The exact response depends on the API implementation.
 
 ---
 
-## 🚨 Telegram Notifications
+##  Telegram Notifications
 
 The project can integrate Telegram alerts to notify an operator when an anomaly is detected.
 
